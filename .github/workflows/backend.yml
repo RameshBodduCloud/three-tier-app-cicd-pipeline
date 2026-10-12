@@ -81,7 +81,7 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
           script: |
-            cd /home/ec2-user/app/Java-springboot-project/backend
+            cd /home/ec2-user/app/three-tier-app-cicd-pipeline/backend
             mvn clean package -DskipTests -U
 
       - name: Stop Old Application
@@ -120,7 +120,7 @@ jobs:
             LOG_DIR=/var/log/app
             sudo mkdir -p $LOG_DIR
             sudo chown ec2-user:ec2-user $LOG_DIR
-            cd /home/ec2-user/app/Java-springboot-project/backend/target
+            cd /home/ec2-user/app/three-tier-app-cicd-pipeline/backend/target
             nohup env \
               MYSQL_HOST=${{ secrets.DB_HOST }} \
               MYSQL_PORT=3306 \
