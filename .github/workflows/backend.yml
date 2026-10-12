@@ -1,15 +1,11 @@
 name: Backend to EC2
 
 on:
-  # push:
-  #   branches:
-  #     - main
   workflow_dispatch:
 
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -20,7 +16,7 @@ jobs:
           distribution: temurin
           java-version: 17
           cache: maven
-      
+
       - name: Build and SonarQube Scan
         working-directory: backend
         env:
@@ -33,7 +29,7 @@ jobs:
             -Dsonar.projectName=backend \
             -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.login=$SONAR_TOKEN
-      
+
       - name: SonarQube Quality Gate
         uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
         with:
@@ -93,21 +89,17 @@ jobs:
           script_stop: false
           script: |
             PID=$(ps -ef | grep '[d]atastore-0.0.7.jar' | awk '{print $2}')
-      
             if [ -z "$PID" ]; then
               echo "Application is not running."
               exit 0
             fi
-      
             echo "Stopping PID: $PID"
             kill -15 $PID
             sleep 5
-      
             if ps -p $PID > /dev/null 2>&1; then
               echo "Force killing PID: $PID"
               kill -9 $PID
             fi
-      
             echo "Application stopped."
 
       - name: Start Application
@@ -136,7 +128,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
-          script: sleep 15
+          script: sleep 20
 
       - name: Verify Application
         uses: appleboy/ssh-action@v1.1.0
@@ -145,9 +137,18 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
           script: |
-            HEALTH=$(curl -s http://localhost:8084/actuator/health)
-            echo "$HEALTH"
-            [[ "$HEALTH" == *'"status":"UP"'* ]]
+            for i in {1..5}; do
+              HEALTH=$(curl -s http://localhost:8084/actuator/health || echo "curl failed")
+              echo "Attempt $i: $HEALTH"
+              STATUS=$(echo "$HEALTH" | jq -r '.status' 2>/dev/null || echo "UNKNOWN")
+              if [[ "$STATUS" == "UP" ]]; then
+                echo "Application is healthy!"
+                exit 0
+              fi
+              sleep 10
+            done
+            echo "Application did not become healthy in time"
+            exit 1
 
       - name: Send Deployment Report
         if: always()
