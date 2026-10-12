@@ -46,7 +46,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             set -e
-            sudo yum install -y git maven java-17-amazon-corretto
+            sudo yum install -y git maven java-17-amazon-corretto jq
 
       - name: Clone / Pull Repository
         uses: appleboy/ssh-action@v1.1.0
@@ -137,17 +137,17 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_KEY }}
           script: |
-            for i in {1..5}; do
+            for i in {1..6}; do
               HEALTH=$(curl -s http://localhost:8084/actuator/health || echo "curl failed")
               echo "Attempt $i: $HEALTH"
               STATUS=$(echo "$HEALTH" | jq -r '.status' 2>/dev/null || echo "UNKNOWN")
               if [[ "$STATUS" == "UP" ]]; then
-                echo "Application is healthy!"
+                echo "✅ Application is healthy!"
                 exit 0
               fi
               sleep 10
             done
-            echo "Application did not become healthy in time"
+            echo "❌ Application did not become healthy in time"
             exit 1
 
       - name: Send Deployment Report
